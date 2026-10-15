@@ -1,0 +1,28 @@
+const fs=require('node:fs');
+const vm=require('node:vm');
+const assert=require('node:assert/strict');
+const elements=new Map();
+function element(id){if(!elements.has(id))elements.set(id,{value:'',textContent:'',innerHTML:'',style:{},disabled:false,selectedIndex:0,addEventListener(){},setAttribute(){},focus(){},showModal(){this.open=true;},close(){this.open=false;}});return elements.get(id);}
+Object.entries({'review-status':'Pending','session-start':'2026-10-15','session-end':'2026-11-14'}).forEach(([id,value])=>element(id).value=value);
+const context=vm.createContext({document:{getElementById:element,querySelectorAll:()=>[]},window:{confirm:()=>true},Date,setTimeout:()=>0,clearTimeout(){},console});
+vm.runInContext(fs.readFileSync(`${__dirname}/data.js`,'utf8')+'\n'+fs.readFileSync(`${__dirname}/app.js`,'utf8'),context);
+const run=code=>vm.runInContext(code,context);
+assert.equal(element('total').textContent,'186');
+assert.equal(element('confirmed').textContent,112);
+assert.equal(element('status-summary').textContent,'Confirmed: 112 · Pending: 37 · Cancelled: 37');
+assert.equal(run('new Set(enrollmentData.map(x=>x.id)).size'),186);
+assert.equal(run('Object.keys(examNames).reduce((sum,exam)=>sum+enrollmentData.filter(x=>x.exam===exam).length,0)'),186);
+assert.equal(run('Array.from({length:31},(_,i)=>enrollmentData.filter(x=>x.day===i+1).length).reduce((a,b)=>a+b,0)'),186);
+assert.equal(run('sessionData.map(availableSeats).join(",")'),'25,0,18,,0,45');
+run("filters={period:'future',exam:'all',center:'all',status:'all'};render()");
+assert.equal(element('total').textContent,'0');assert.match(element('trend').innerHTML,/No enrollments/);
+assert.equal(element('pending').textContent,4,'Review queue ignores enrollment period');
+assert.equal(element('seats').textContent,88,'Sessions ignore enrollment period');
+run("filters={period:'month',exam:'V-A',center:'Mumbai',status:'Confirmed'};render()");
+assert.equal(Number(element('total').textContent),run("enrollmentData.filter(x=>x.exam==='V-A'&&x.center==='Mumbai'&&x.status==='Confirmed').length"));
+run("openProfile('C-••1042');decide('Rejected')");assert.match(element('review-error').textContent,/Enter a reason/);assert.equal(run('selectedProfile.status'),'Pending');
+element('reason').value='Sample qualification document needs correction';run("decide('Correction requested')");
+assert.equal(run('selectedProfile.status'),'Correction requested');assert.equal(run('audit.length'),1);assert.equal(run('audit[0].prior'),'Pending');
+run("decide('Approved')");assert.equal(run('audit.length'),1,'Repeat decision rejected');
+run("openProfile('C-••1087');selectedProfile.version++;decide('Approved')");assert.match(element('review-error').textContent,/changed after you opened/);assert.equal(run('selectedProfile.status'),'Pending');
+console.log('PASS: reconciliation, combined filters, empty state, separate date scopes, seat edge cases, required reasons, correction audit, repeat-decision guard, version conflict.');

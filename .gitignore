@@ -1,0 +1,17 @@
+# Local IDE state
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Dependencies and generated caches
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
