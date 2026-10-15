@@ -8,6 +8,16 @@
 node_modules/
 __pycache__/
 *.py[cod]
+**/bin/
+**/obj/
+**/dist/
+**/coverage/
+**/TestResults/
+.local/
+*.log
+appsettings.Local.json
+backend/Enrollment.Api/wwwroot/
+*.tsbuildinfo
 
 # Local configuration and credentials
 .env
